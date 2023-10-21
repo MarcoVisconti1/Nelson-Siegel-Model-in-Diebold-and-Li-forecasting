@@ -1,0 +1,1115 @@
+---
+title: "Forecasting the term structure of government bond yields (replicate)"
+author: "Giovanni Lollo, Marco Visconti"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+## 1. Introduction
+First of all, it's relevant to mention that the last 25 years have produced major advances in theoretical models of the term structure as well as their econometric estimation. Two popular approaches to term structure modeling are no-arbitrage models and equilibrium models. In fact, the no-arbitrage tradition focuses on perfectly fitting the term structure at a point in time to ensure that no arbitrage possibilities exist, which is important for pricing derivatives. On the other hand, the equilibrium tradition focuses on modeling the dynamics of the instantaneous rate, typically using affine models, after which yields at other maturities can be derived under various assumptions about the risk premium. It can be shown that prominent contributions in the no-arbitrage vein include *Hull and White (1990)* and *Heath et al. (1992)*, and prominent contributions in the affine equilibrium tradition include *Vasicek (1977), Cox et al. (1985)*, and *Duffie and Kan (1996)*.
+
+Indeed, interest rate point forecasting is crucial for bond portfolio management, and interest rate density forecasting is important for both derivatives pricing and risk management. Hence one may wonder what the modern models have to say about interest rate forecasting. It turns out that, despite the impressive theoretical advances in the financial economics of the yield curve, surprisingly little attention has been paid to the key practical problem of yield curve forecasting. The arbitrage-free term structure literature has little to say about dynamics or forecasting, as it is concerned primarily with fitting the term structure at a point in time. moreover, the affine equilibrium term structure literature is concerned with dynamics driven by the short rate, and so it is potentially linked to forecasting, but most papers in that tradition, such as *de Jong (2000)* and *Dai and Singleton (2000)*, focus only on in-sample fit as opposed to out- of-sample forecasting. Furthermore, those that do focus on out-of-sample forecasting, notably *Duffee (2002)*, conclude that the models forecast poorly.
+
+In this paper we take an explicitly out-of-sample forecasting perspective, and we use neither the no-arbitrage approach nor the equilibrium approach. Instead, we use the *Nelson and Siegel (1987)* exponential components framework to distill the entire yield curve, period-by-period, into a three-dimensional parameter that evolves dynamically. We show that the three time-varying parameters may be interpreted as factors. Unlike factor analysis, however, in which one estimates both the unobserved factors and the factor loadings, the Nelson–Siegel framework imposes structure on the factor loadings. Doing so not only facilitates highly precise estimation of the factors, but, as we show, it also lets us interpret the factors as level, slope and curvature. We propose and estimate autoregressive models for the factors, and then we forecast the yield curve by forecasting the factors. 
+
+In fact, the results are encouraging; in particular, our models produce one-year-ahead forecasts that are noticeably more accurate than standard benchmarks.
+
+For instance, Related work includes the factor models of *Litzenberger et al. (1995)*, *Bliss (1997a,b)*, *Dai and Singleton (2000)*, *de Jong and Santa-Clara (1999)*, de Jong (2000), *Brandt and Yaron (2001)* and *Duffee (2002)*. Particularly relevant are the three-factor models of *Balduzzi et al. (1996)*, *Chen (1996)*, and especially the *Andersen and Lund (1997)* model with stochastic mean and volatility, whose three factors are interpreted in terms of level, slope and curvature. We will subsequently discuss related work in greater detail; for now, suffice it to say that little of it considers forecasting directly, and that our approach, although related, is indeed very different.
+
+As a matter of of fact, we perform the subsequent steps; in Section 2 we provide a detailed description of our modeling framework, which interprets and extends earlier work in ways linked to recent developments in multifactor term structure modeling, and we also show how it can replicate a variety of stylized facts about the yield curve. Next, in Section 3, we proceed to an empirical analysis, describing the data, estimating the models, and examining out-of-sample forecasting performance. Ultimately, we offer interpretive concluding remarks in the final section 4.
+
+## 2. Modeling and forecasting the term structure I: Methods
+In this section, we introduce the framework that we use for fitting and forecasting the yield curve. Indeed, we argue that the well-known *Nelson and Siegel (1987)* curve is well-suited to our ultimate forecasting purposes, and we introduce a novel twist of interpretation, showing that the three coefficients in the Nelson–Siegel curve may be interpreted as latent level, slope and curvature factors.Additionally, one can see that the nature of the factors and its respective loadings implicitly in the Nelson–Siegel model facilitate consistency with various empirical properties of the yield curve that have been cataloged over the years. Finally, motivated by our interpretation of the Nelson–Siegel model as a three-factor model of level, slope and curvature, we contrast it to various multi- factor models that have appeared in the literature.
+
+**2.1. Constructing ‘‘Raw’’ yields**
+
+For simplicity, let us first fix ideas and establish notation by introducing three key theoretical constructs and the relationships among them: the discount curve, the forward curve, and the yield curve. 
+Let $P_t(\tau)$ denote the price of a t-period discount bond, i.e., the present value at time t of $1 receivable t periods ahead, and let  denote its continuously compounded zero-coupon nominal yield to maturity. 
+From the yield curve we obtain the discount curve,
+$$
+{P_t(\tau)}=e^{-y_t(\tau)}
+$$
+and from the discount curve we obtain the instantaneous (nominal) forward rate curve,
+$$
+{f_t(\tau)}= -P'_t(\tau)/P_t(\tau)
+$$
+Therefore, the relationship between the yield to maturity and the forward rate is 
+$$
+{y_t(\tau)}=1/\tau \int_{0}^{\tau}f_t(u)du
+$$
+which implies that the zero-coupon yield is an equally-weighed average of forward rates. Given the yield curve or forward curve, we can price any coupon bond as the sum of the present values of future coupon and principal payments.
+In practice, yield curves, discount curves and forward curves are not observed. Instead, they must be estimated from observed bond prices. Two popular approaches to constructing yields proceed by estimating a smooth discount curve and then converting to yields at the relevant maturities via the above formulae. Eventually, the first discount-curve approach to yield construction is due to *McCulloch (1975)* and *McCulloch and Kwon (1993)*, who model the discount curve with a cubic spline. The fitted discount curve, however, diverges at long maturities instead of converging to zero. However, such curves provide a poor fit to yield curves that are flat or have a flat long end, which requires an exponentially decreasing discount function.
+Furthermore, a second discount-curve approach to yield construction is due to *Vasicek and Fong (1982)*, who fit exponential splines to the discount curve, using a negative transformation of maturity instead of maturity itself, which ensures that the forward rates and zero-coupon yields converge to a fixed limit as maturity increases. Lastly, it can be observed that the Vasicek–Fong model is more successful at fitting yield curves with flat long ends. It has problems of its own, however, because its estimation requires iterative nonlinear optimization, and it can be hard to restrict the implied forward rates to be positive.
+A third and very popular approach to yield construction is due to *Fama and Bliss (1987)*, who construct yields not via an estimated discount curve, but rather via estimated forward rates at the observed maturities. Their method sequentially constructs the forward rates necessary to price successively longer-maturity bonds, often called an ‘‘unsmoothed Fama–Bliss’’ forward rates, and then constructs ‘‘unsmoothed Fama–Bliss yields’’ by averaging the appropriate unsmoothed Fama–Bliss forward rates. The unsmoothed Fama–Bliss yields exactly price the included bonds. Throughout this paper, we model and forecast the unsmoothed Fama–Bliss yields.
+
+**2.2. Modeling yields: the Nelson– Siegel yield curve and its interpretation**
+
+At any given time, we have a large set of (Fama–Bliss unsmoothed) yields, to which we fit a parametric curve for purposes of modeling and forecasting. Throughout this paper, we use the *Nelson and Siegel (1987)* functional form, which is a convenient and parsimonious three-component exponential approximation. In particular, *Nelson and Siegel (1987)*, as extended by *Siegel and Nelson (1988)*, work with the following forward rate curve,
+$$
+{f_t(\tau)}=\beta_{1t}+\beta_{2t}e^{-\lambda_t\tau}+\beta_{3t}\lambda_te^{-\lambda_t\tau}
+$$
+In fact, the Nelson–Siegel forward rate curve can be viewed as a constant plus a Laguerre function, which is a polynomial times an exponential decay term and is a popular mathematical approximating function.The corresponding yield curve is
+$$
+{y_t(\tau)}=\beta_{1t}+\beta_{2t}\bigg(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\bigg)+\beta_{3t} \bigg(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}-e^{-\lambda_t\tau}\bigg)
+$$
+The Nelson–Siegel yield curve also corresponds to a discount curve that begins at one at zero maturity and approaches zero at infinite maturity, as appropriate.
+Let us take a closer look and interpret the corresponding parameters in the Nelson–Siegel model.
+The parameter $\lambda_t$ governs the exponential decay rate; small values of $\lambda_t$ produce slow decay and can better fit the curve at long maturities, while large values of $\lambda_t$ produce fast decay and can better fit the curve at short maturities. In addition, $\lambda_t$ also governs where the loading on $\beta_{3t}$ achieves its maximum. 
+$\beta_{1t}$,$\beta_{2t}$ and $\beta_{3t}$ are likely the three latent dynamic factors.The loading on $\beta_{1t}$ for instance is 1, in other words it is a constant that does not decay to zero in the limit; hence it may be viewed as a long-term factor. Next, the weight on  $\beta_{2t}$ is $(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau})$, representing a function that starts at 1 but decays monotonically and quickly to 0; hence it may be viewed as a short-term factor. The corresponding loading on  $\beta_{3t}$ is $(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau})-e^{-\lambda_t\tau})$, which in contrast to the other parameters starts at 0 (and is thus not short-term), increases, and then follows the same path as $\beta_{2}$ decays to zero (and thus is not long-term); hence it may be viewed as a medium-term factor. 
+We plot the three factor loadings in Fig. 1. They are similar to those obtained by *Bliss (1997a)*, who estimated the weights via a statistical factor analysis.
+```{r Figure 1 , echo = TRUE}
+library(ggplot2)
+tau <- c("1","3", "6","9","12","15",
+  "18","21","24","30","36","48",
+  "60","72","84","96","108","120")
+tau<- as.numeric(tau)
+lambda <- 0.0609
+beta1loadings <- tau^0
+beta2loadings <- (1 - exp(-lambda * tau)) / (lambda * tau)
+beta3loadings <- (1 - exp(-lambda * tau)) / (lambda * tau) - exp(-lambda * tau)
+data.betaloadings <- data.frame(tau = rep(tau, 3),
+                   y = c(beta1loadings, beta2loadings, beta3loadings),
+                   function_type = rep(c("beta1loadings", "beta2loadings",
+                   "beta3loadings"),each = length(tau)))
+figure1 <- ggplot(data.betaloadings, aes(x = tau, y = y,
+                                         linetype = function_type)) +
+  geom_line() +
+  labs(x = "T(Maturity, in Months)", y = "Loadings") +
+  ggtitle("Betas Loadings") +
+  scale_linetype_manual(values = c("dashed", "solid", "dotted"))+
+  scale_x_continuous(breaks = seq(0, 120, 20), limits = c(0, 120))+
+  scale_y_continuous(breaks = seq(0, 1, 0.2), limits = c(0, 1))
+print(figure1)
+```
+*Factor loadings. We plot the factor loadings in the three-factor model,where the three factors are $\beta_{1t}$, $\beta_{2t}$ and $\beta_{3t}$, the associated loadings are 1, $\big(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\big)$ and $\big(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\big)-e^{-\lambda_t\tau}\big)$ and  $\tau$ denotes maturity. We fix $\lambda_t= 0.0609$.*
+
+An important insight is that the three factors, which following the literature we have thus far called long-term, short-term and medium-term, may also be interpreted in terms of level, slope and curvature.The long-term factor $\beta_{1t}$, for example, governs the yield curve level. In particular, one can easily verify that $y_t(\infty)$=$\beta_{1t}$.
+
+Alternatively, we can observe that an increase in $\beta_{1t}$ increases all yields equally, as the loading is identical at all maturities, thereby changing the level of the yield curve.
+
+The short-term factor $\beta_{2t}$ is closely related to the yield curve slope, which we define as the ten-year yield minus the three-month yield. In particular,$y_t(120)$-$y_t(3)$ = -0.78$\beta_{2t}$+ 0.06$\beta_{3t}$. Some authors such as Frankel and Lown (1994), moreover, define the yield curve slope as $y_t(\infty)$-$y_t(0)$, which is exactly equal to $-\beta_{2t}$. Therefore, if we take an example of an increase in $\beta_{2t}$ increases short yields more than long yields, because the short rates load on $\beta_{2t}$ more heavily, thereby changing the slope of the yield curve.
+
+In proper words, we have seen that $\beta_{1t}$ governs the level of the yield curve and $\beta_{2t}$  governs its slope.It is interesting to note, moreover, that the instantaneous yield depends on both the level and slope factors, because $y_t(0)$= $\beta_{1t}$+$\beta_{2t}$. In fact, several other models have the same implication. In particular, *Dai and Singleton (2000)* show that the three-factor models of *Balduzzi et al. (1996) and Chen (1996)* impose the restrictions that the instantaneous yield is an affine function of only two of the three state variables, a property shared by the *Andersen and Lund (1997)* three-factor non-affine model.
+
+Finally, the medium-term factor $\beta_{3t}$ is closely related to the yield curve curvature, which we define as twice the two-year yield minus the sum of the ten-year and three- month yields. For instance, 2$y_t(24)$ -$y_t(3)$-$y_t(120)$ =0.00053$\beta_{2t}$ +0.37$\beta_{3t}$. Alternatively, note that an increase in $\beta_{3t}$ will have little effect on very short or very long yields, which load minimally on it, but will increase medium-term yields, which load more heavily on it, thereby increasing yield curve curvature.
+
+Now that we have interpreted Nelson–Siegel as a three-factor of level, slope and curvature, it is appropriate to contrast it to *Litzenberger et al. (1995)*, which is highly related yet distinct. First, although Litzenberger et al. model the discount curve $P_t(\tau)$ using exponential components, the yield curve is a log transformation of the discount curve because ${y_t(\tau)}$ = - log ${y_t(\tau)}$/$\tau$ ,so the two approaches are equivalent in the one-factor case. In the multi-factor case, however, a sum of factors in the yield curve will not be a sum in the discount curve, so there is generally no simple mapping between the approaches.
+Second, both we and Litzenberger et al. provide novel interpretations of the parameters of fitted curves. Litzenberger et al., however, do not interpret parameters directly as factors.
+In closing this sub-section, it is worth noting that what we have called the ‘‘Nelson–Siegel curve’’ is actually a different factorization than the one originally advocated by *Nelson and Siegel (1987)*, who used
+
+$$
+{y_t(\tau)}= b_{1t} +b_{2t}\bigg(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\bigg)-b_{3t}e^{-\lambda_t\tau}
+$$
+Obviously, the Nelson–Siegel factorization matches ours with $b_{1t}$=$\beta_{1t}$, $b_{2t}$=$\beta_{2t}$+$\beta_{3t}$ and $b_{3t}$=$\beta_{3t}$. Ours is preferable, however, for reasons that we are now in a position to appreciate. 
+
+First, $\big(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\big)$ and $e^{-\lambda_t\tau}$ have similar monotonically decreasing shape, so if we were to interpret $b_{2}$ and$b_{3}$ as factors, then their loadings would be forced to be very similar, which creates at least two problems. First, conceptually, it would be hard to provide intuitive interpretations of the factors in the original Nelson–Siegel framework. Second, operationally, it would be difficult to estimate the factors precisely, because the high coherence in the factors produces multicolinearity.
+
+**2.3. Stylized facts of the yield curve and the model’s potential ability to replicate them**
+
+A good model of yield curve dynamics should be able to reproduce the historical stylized facts concerning the average shape of the yield curve, the variety of shapes assumed at different times, the strong persistence of yields and weak persistence of spreads, and so on. It is not easy for a parsimonious model to accord with all such facts.
+Let us consider some of the most important stylized facts and the ability of our model to replicate them, in principle:
+
+(1) The average yield curve is increasing and concave. In our framework, the average yield curve is the yield curve corresponding to the average values of $\beta_{1t}$, $\beta_{2t}$ and $\beta_{3t}$.It is certainly possible in principle that it may be increasing and concave.
+(2) The yield curve assumes a variety of shapes through time, including upward sloping, downward sloping, humped, and inverted humped. The yield curve in our framework can assume all of those shapes. Whether and how often it does depends upon the variation in $\beta_{1t}$, $\beta_{2t}$ and $\beta_{3t}$.
+(3) Yield dynamics are persistent, and spread dynamics are much less persistent. Persistent yield dynamics would correspond to strong persistence of $\beta_{1t}$ and and less persistent spread dynamics would correspond to weaker persistence of $\beta_{2t}$.
+(4) The short end of the yield curve is more volatile than the long end. In our framework, this is reflected in factor loadings: the short end depends positively on both $\beta_{1t}$ and $\beta_{2t}$ whereas the long end depends only on $\beta_{1t}$.
+(5) Long rates are more persistent than short rates. In our framework, long rates depend only on $\beta_{1t}$.If $\beta_{1t}$ is the most persistent factor, then long rates will be more persistent than short rates.
+
+Overall, it seems clear that our framework is consistent, at least in principle, with many of the key stylized facts of yield curve behavior. Whether principle accords with practice is an empirical matter, to which we now turn.
+\vspace{1cm}\
+
+## 3. Modeling and forecasting the term structure II: Empirics
+In this section, we estimate and assess the fit of the three-factor model in a time series of cross sections, after which we model and forecast the extracted level, slope and curvature components. We begin by introducing the data.
+
+**3.1. The data**
+
+We use end-of-month price quotes (bid-ask average) for U.S. Treasuries, from January 1985 through December 2000, taken from the CRSP government bonds files. CRSP filters the data, eliminating bonds with option features (callable and flower bonds), and bonds with special liquidity problems (notes and bonds with less than one year to maturity, and bills with less than one month to maturity), and then converts the filtered bond prices to unsmoothed *Fama and Bliss (1987)* forward rates. Then, using programs and CRSP data kindly supplied by Rob Bliss, we convert the unsmoothed Fama–Bliss forward rates into unsmoothed Fama–Bliss zero yields.
+
+Although most of our analysis does not require the use of fixed maturities, doing so greatly simplifies our subsequent forecasting exercises. Hence we pool the data into fixed maturities. Because not every month has the same maturities available, we linearly interpolate nearby maturities to pool into fixed maturities of 3, 6, 9, 12, 15, 18, 21, 24, 30, 36, 48, 60, 72, 84, 96, 108, and 120 months, where a month is defined as 30.4375 days. Although there is no bond with exactly 30.4375 days to maturity, each month there are many bonds with either 30, 31, 32, 33, or 34 days to maturity. Similarly we obtain data for maturities of 3 months, 6 months, etc.
+
+The various yields, as well as the yield curve level, slope and curvature defined above, will play a prominent role in the sequel. Hence we focus on them now in some detail. In Fig. 2 we provide a three-dimensional plot of our yield curve data. The large amount of temporal variation in the level is visually apparent. The variation in slope and curvature is less strong, but nevertheless apparent. In Table 1, we present descriptive statistics for the yields. It is clear that the typical yield curve is upward sloping, that the long rates are less volatile and more persistent than short rates, that the level (120-month yield) is highly persistent but varies only moderately relative to its mean, that the slope is less persistent than any individual yield but quite highly variable relative to its mean, and the curvature is the least persistent of all factors and the most highly variable relative to its mean.
+```{r data loading , echo = TRUE}
+mydataframe1<-read.table("DATA.txt")
+mydataframe2<-mydataframe1[-1,]
+colnames(mydataframe2)<-c( "data","1","3","6","9","12","15","18","21",
+                           "24","30","36","48","60","72","84","96","108","120")
+rownames(mydataframe2)<-mydataframe2[,1]
+s<-which(mydataframe2$data=="19850131")
+f<-which(mydataframe2$data=="20001229")
+mydataframe3<-mydataframe2[181:372,]
+mydataframe<-mydataframe3[,-c(1,2)]
+```
+```{r figure 2, echo = FALSE}
+x<-as.integer(rownames(mydataframe))
+y<-as.integer(colnames(mydataframe))
+myvector <- c(
+  mydataframe$"3",
+  mydataframe$"6", 
+  mydataframe$"9",
+  mydataframe$"12",
+  mydataframe$"15",
+  mydataframe$"18", 
+  mydataframe$"21", 
+  mydataframe$"24", 
+  mydataframe$"30", 
+  mydataframe$"36", 
+  mydataframe$"48",
+  mydataframe$"60", 
+  mydataframe$"72",
+  mydataframe$"84",
+  mydataframe$"96", 
+  mydataframe$"108",
+  mydataframe$"120")
+z<-matrix(myvector,nrow=192,byrow=FALSE)
+```
+```{r persp function, echo = TRUE}
+persp(x, y, z, shade = 0.5, theta = 325,  phi = 15, xlab = "time",
+      ylab = "maturity", zlab = "yield",r = 8, axes = TRUE,
+      ticktype = "detailed", expand = 0.7)
+```
+*Yield curves, from 1985.01 to 2000.12. The sample consists of monthly yield data from January 1985 to December 2000 at maturities of 3, 6, 9, 12, 15, 18, 21, 24, 30, 36, 48, 60, 72, 84, 96, 108, and 120 months.*
+```{r Table 1, echo = FALSE}
+library(knitr)
+tenyears= mydataframe[,17]
+threemonths= mydataframe[,1]
+slope= tenyears-threemonths
+tftt= 2*mydataframe[,8]
+tmpty=tenyears+threemonths
+curvature=tftt-tmpty
+means<- c(
+  mean(mydataframe$"3"),
+  mean(mydataframe$"6"),
+  mean(mydataframe$"9"),
+  mean(mydataframe$"12"),
+  mean(mydataframe$"15"),
+  mean(mydataframe$"18"),
+  mean(mydataframe$"21"),
+  mean(mydataframe$"24"),
+  mean(mydataframe$"30"),
+  mean(mydataframe$"36"),
+  mean(mydataframe$"48"),
+  mean(mydataframe$"60"),
+  mean(mydataframe$"72"),
+  mean(mydataframe$"84"),
+  mean(mydataframe$"96"),
+  mean(mydataframe$"108"),
+  mean(mydataframe$"120"),
+  mean(slope),
+  mean(curvature)
+)
+sd<- c(
+  sd(mydataframe$"3"),
+  sd(mydataframe$"6"),
+  sd(mydataframe$"9"),
+  sd(mydataframe$"12"),
+  sd(mydataframe$"15"),
+  sd(mydataframe$"18"),
+  sd(mydataframe$"21"),
+  sd(mydataframe$"24"),
+  sd(mydataframe$"30"),
+  sd(mydataframe$"36"),
+  sd(mydataframe$"48"),
+  sd(mydataframe$"60"),
+  sd(mydataframe$"72"),
+  sd(mydataframe$"84"),
+  sd(mydataframe$"96"),
+  sd(mydataframe$"108"),
+  sd(mydataframe$"120"),
+  sd(slope),
+  sd(curvature)
+)
+min<- c(
+  min(mydataframe$"3"),
+  min(mydataframe$"6"),
+  min(mydataframe$"9"),
+  min(mydataframe$"12"),
+  min(mydataframe$"15"),
+  min(mydataframe$"18"),
+  min(mydataframe$"21"),
+  min(mydataframe$"24"),
+  min(mydataframe$"30"),
+  min(mydataframe$"36"),
+  min(mydataframe$"48"),
+  min(mydataframe$"60"),
+  min(mydataframe$"72"),
+  min(mydataframe$"84"),
+  min(mydataframe$"96"),
+  min(mydataframe$"108"),
+  min(mydataframe$"120"),
+  min(slope),
+  min(curvature)
+)
+max<- c(
+  max(mydataframe$"3"),
+  max(mydataframe$"6"),
+  max(mydataframe$"9"),
+  max(mydataframe$"12"),
+  max(mydataframe$"15"),
+  max(mydataframe$"18"),
+  max(mydataframe$"21"),
+  max(mydataframe$"24"),
+  max(mydataframe$"30"),
+  max(mydataframe$"36"),
+  max(mydataframe$"48"),
+  max(mydataframe$"60"),
+  max(mydataframe$"72"),
+  max(mydataframe$"84"),
+  max(mydataframe$"96"),
+  max(mydataframe$"108"),
+  max(mydataframe$"120"),
+  max(slope),
+  max(curvature)
+)
+p1<- c(
+  acf(mydataframe$"3", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"6", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"9", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"12", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"15", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"18", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"21", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"24", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"30", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"36", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"48", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"60", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"72", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"84", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"96", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"108", lag.max = 30, plot = FALSE)$acf[2],
+  acf(mydataframe$"120", lag.max = 30, plot = FALSE)$acf[2],
+  acf(slope, lag.max = 30, plot = FALSE)$acf[2],
+  acf(curvature, lag.max = 30, plot = FALSE)$acf[2]
+)
+p12 <- c(
+  acf(mydataframe$"3", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"6", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"9", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"12", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"15", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"18", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"21", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"24", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"30", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"36", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"48", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"60", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"72", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"84", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"96", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"108", lag.max = 30, plot = FALSE)$acf[13],
+  acf(mydataframe$"120", lag.max = 30, plot = FALSE)$acf[13],
+  acf(slope, lag.max = 30, plot = FALSE)$acf[13],
+  acf(curvature, lag.max = 30, plot = FALSE)$acf[13]
+)
+p30<- c(
+  acf(mydataframe$"3", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"6", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"9", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"12", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"15", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"18", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"21", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"24", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"30", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"36", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"48", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"60", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"72", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"84", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"96", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"108", lag.max = 30, plot = FALSE)$acf[31],
+  acf(mydataframe$"120", lag.max = 30, plot = FALSE)$acf[31],
+  acf(slope, lag.max = 30, plot = FALSE)$acf[31],
+  acf(curvature, lag.max = 30, plot = FALSE)$acf[31]
+)
+table1<- cbind(means,sd,min,max,p1,p12,p30)
+rownames(table1)<-c("3","6","9","12","15","18","21","24","30","36","48","60","72","84","96","108","120", "slope","curvature")
+colnames(table1)<-c("Mean","Std.dev.","Minimum","Maximum","$\\hat{p}(1)$","$\\hat{p}(12)$", "$\\hat{p}(30)$")
+table1r<- round(table1, digits = 3)
+kable(table1r)
+```
+*Note : We present descriptive statistics for monthly yields at different maturities, and for the yield curve level, slope and curvature, where we define the level as the 10-year yield, the slope as the difference between the 10-year and 3-month yields, and the curvature as the twice the 2-year yield minus the sum of the 3- month and 10-year yields. The last three columns contain sample autocorrelations at displacements of 1, 12, and 30 months. The sample period is 1985:01–2000:12.*
+```{r Figure 3, echo = FALSE}
+library(ggplot2)
+threemonthsyield <- mydataframe$"3"
+sixmonthsyield <- mydataframe$"6"
+ninemonthsyield <- mydataframe$"9"
+twelvemonthsyield <- mydataframe$"12"
+fifteenmonthsyield <- mydataframe$"15"
+eighteenmonthsyield <- mydataframe$"18"
+twentyonemonthsyield <- mydataframe$"21"
+twentyfourmonthsyield <- mydataframe$"24"
+thirtymonthsyield <- mydataframe$"30"
+thirtysixmonthsyield <- mydataframe$"36"
+fortyeightmonthsyield <- mydataframe$"48"
+sixtymonthsyield <- mydataframe$"60"
+seventytwomonthsyield <- mydataframe$"72"
+eightyfourmonthsyield <- mydataframe$"84"
+ninetysixmonthsyield <- mydataframe$"96"
+onehundredandeightmonthsyield <- mydataframe$"108"
+onehundredandtwentymonthsyield <- mydataframe$"120"
+
+percentile_25_threemonths <- quantile(threemonthsyield, probs = 0.25)
+percentile_25_sixmonths <- quantile(sixmonthsyield, probs = 0.25)
+percentile_25_ninemonths <- quantile(ninemonthsyield, probs = 0.25)
+percentile_25_twelvemonths <- quantile(twelvemonthsyield, probs = 0.25)
+percentile_25_fifteenmonths <- quantile(fifteenmonthsyield, probs = 0.25)
+percentile_25_eighteenmonths <- quantile(eighteenmonthsyield, probs = 0.25)
+percentile_25_twentyonemonths <- quantile(twentyonemonthsyield, probs = 0.25)
+percentile_25_twentyfourmonths <- quantile(twentyfourmonthsyield, probs = 0.25)
+percentile_25_thirtymonths <- quantile(thirtymonthsyield, probs = 0.25)
+percentile_25_thirtysixmonths <- quantile(thirtysixmonthsyield, probs = 0.25)
+percentile_25_fortyeightmonths <- quantile(fortyeightmonthsyield, probs = 0.25)
+percentile_25_sixtymonths <- quantile(sixtymonthsyield, probs = 0.25)
+percentile_25_seventytwomonths <- quantile(seventytwomonthsyield, probs = 0.25)
+percentile_25_eightyfourmonths <- quantile(eightyfourmonthsyield, probs = 0.25)
+percentile_25_ninetysixmonths <- quantile(ninetysixmonthsyield, probs = 0.25)
+percentile_25_onehundredandeightmonths <- quantile(onehundredandeightmonthsyield, probs = 0.25)
+percentile_25_onehundredandtwentymonths <- quantile(onehundredandtwentymonthsyield, probs = 0.25)
+
+median_threemonths <- median(threemonthsyield)
+median_sixmonths <- median(sixmonthsyield)
+median_ninemonths <- median(ninemonthsyield)
+median_twelvemonths <- median(twelvemonthsyield)
+median_fifteenmonths <- median(fifteenmonthsyield)
+median_eighteenmonths <- median(eighteenmonthsyield)
+median_twentyonemonths <- median(twentyonemonthsyield)
+median_twentyfourmonths <- median(twentyfourmonthsyield)
+median_thirtymonths <- median(thirtymonthsyield)
+median_thirtysixmonths <- median(thirtysixmonthsyield)
+median_fortyeightmonths <- median(fortyeightmonthsyield)
+median_sixtymonths <- median(sixtymonthsyield)
+median_seventytwomonths <- median(seventytwomonthsyield)
+median_eightyfourmonths <- median(eightyfourmonthsyield)
+median_ninetysixmonths <- median(ninetysixmonthsyield)
+median_onehundredandeightmonths <- median(onehundredandeightmonthsyield)
+median_onehundredandtwentymonths <- median(onehundredandtwentymonthsyield)
+
+percentile_75_threemonths <- quantile(threemonthsyield, probs = 0.75)
+percentile_75_sixmonths <- quantile(sixmonthsyield, probs = 0.75)
+percentile_75_ninemonths <- quantile(ninemonthsyield, probs = 0.75)
+percentile_75_twelvemonths <- quantile(twelvemonthsyield, probs = 0.75)
+percentile_75_fifteenmonths <- quantile(fifteenmonthsyield, probs = 0.75)
+percentile_75_eighteenmonths <- quantile(eighteenmonthsyield, probs = 0.75)
+percentile_75_twentyonemonths <- quantile(twentyonemonthsyield, probs = 0.75)
+percentile_75_twentyfourmonths <- quantile(twentyfourmonthsyield, probs = 0.75)
+percentile_75_thirtymonths <- quantile(thirtymonthsyield, probs = 0.75)
+percentile_75_thirtysixmonths <- quantile(thirtysixmonthsyield, probs = 0.75)
+percentile_75_fortyeightmonths <- quantile(fortyeightmonthsyield, probs = 0.75)
+percentile_75_sixtymonths <- quantile(sixtymonthsyield, probs = 0.75)
+percentile_75_seventytwomonths <- quantile(seventytwomonthsyield, probs = 0.75)
+percentile_75_eightyfourmonths <- quantile(eightyfourmonthsyield, probs = 0.75)
+percentile_75_ninetysixmonths <- quantile(ninetysixmonthsyield, probs = 0.75)
+percentile_75_onehundredandeightmonths <- quantile(onehundredandeightmonthsyield, probs = 0.75)
+percentile_75_onehundredandtwentymonths <- quantile(onehundredandtwentymonthsyield, probs = 0.75)
+maturities <-c(
+  "3",
+  "6",
+  "9",
+  "12",
+  "15",
+  "18",
+  "21",
+  "24",
+  "30",
+  "36",
+  "48",
+  "60",
+  "72",
+  "84",
+  "96",
+  "108",
+  "120"
+)
+maturities<-as.numeric(maturities)
+p25<-c(
+  percentile_25_threemonths,
+  percentile_25_sixmonths,
+  percentile_25_ninemonths,
+  percentile_25_twelvemonths,
+  percentile_25_fifteenmonths,
+  percentile_25_eighteenmonths,
+  percentile_25_twentyonemonths,
+  percentile_25_twentyfourmonths,
+  percentile_25_thirtymonths,
+  percentile_25_thirtysixmonths,
+  percentile_25_fortyeightmonths,
+  percentile_25_sixtymonths,
+  percentile_25_seventytwomonths,
+  percentile_25_eightyfourmonths,
+  percentile_25_ninetysixmonths,
+  percentile_25_onehundredandeightmonths,
+  percentile_25_onehundredandtwentymonths
+)
+medianv<- c(
+  median_threemonths,
+  median_sixmonths,
+  median_ninemonths,
+  median_twelvemonths,
+  median_fifteenmonths,
+  median_eighteenmonths,
+  median_twentyonemonths,
+  median_twentyfourmonths,
+  median_thirtymonths,
+  median_thirtysixmonths,
+  median_fortyeightmonths,
+  median_sixtymonths,
+  median_seventytwomonths,
+  median_eightyfourmonths,
+  median_ninetysixmonths,
+  median_onehundredandeightmonths,
+  median_onehundredandtwentymonths
+)
+p75<-c(
+  percentile_75_threemonths,
+  percentile_75_sixmonths,
+  percentile_75_ninemonths,
+  percentile_75_twelvemonths,
+  percentile_75_fifteenmonths,
+  percentile_75_eighteenmonths,
+  percentile_75_twentyonemonths,
+  percentile_75_twentyfourmonths,
+  percentile_75_thirtymonths,
+  percentile_75_thirtysixmonths,
+  percentile_75_fortyeightmonths,
+  percentile_75_sixtymonths,
+  percentile_75_seventytwomonths,
+  percentile_75_eightyfourmonths,
+  percentile_75_ninetysixmonths,
+  percentile_75_onehundredandeightmonths,
+  percentile_75_onehundredandtwentymonths
+)
+df<-data.frame(x = rep(maturities, 3),
+                 y = c(p25, medianv , p75),
+                 group = rep(c("25th percentile", "Median", "75th percentile"), each = length(maturities)))
+```
+```{r plot figure 3, echo = TRUE}
+ggplot(df, aes(x = x, y = y, linetype = group, color = NULL)) + geom_line() +
+scale_linetype_manual(values = c("dotted", "dotted", "solid")) +
+labs(x = "Maturity (Months)", y = "Yield (Percent)", linetype = "Group",
+       color = NULL) +
+theme(legend.position = "none") + theme(plot.margin = margin(1, 1, 1, 1,"cm"))+
+scale_y_continuous(limits = c(4.85, 9), breaks = seq(4, 9, by = 0.5)) +
+scale_x_continuous(limits = c(0, 120), breaks = seq(0, 120, by = 20)) +
+annotate("text", x = max(maturities), y = p25[length(p25)/1.6],
+           label = "25%",hjust = 6, size = 4) +
+annotate("text", x = max(maturities), y = medianv[length(medianv)/1.2], 
+           label = "Median", hjust = 6, size = 4)+
+annotate("text", x = max(maturities), y = p75[length(p75)/1],
+           label = "75%", hjust = 8, size = 4)
+```
+*Median data-based yield curve with pointwise interquartile range. For each maturity, we plot the median yield along with the 25th and 75th percentiles.*
+
+It's essential to take into account, because it will be certainly relevant for our future modeling choice, that level, slope and curvature are not highly correlated with each other;all pairwise correlations are less than 0.40. 
+For instance, in Fig.3 we display the median yield curve together with pointwise interquartile ranges. The earlier-mentioned upward sloping pattern, with long rates less volatile than short rates, is apparent. One can also see that the distributions of yields around their medians tend to be asymmetric, with a long right tail.
+
+**3.2. Fitting yield curves**
+
+As discussed above, we fit the yield curve using the three-factor model,
+$$
+{y_t(\tau)}= b_{1t} +b_{2t}\bigg(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\bigg)-b_{3t}e^{-\lambda_t\tau}
+$$
+We could estimate the parameters $\theta_t$= {$\beta_{1t}$,$\beta_{2t}$,$\beta_{3t}$,$\lambda_{t}$}by nonlinear least squares, for each month t.Following standard practice tracing to *Nelson and Siegel (1987)*, however, we instead fix $\lambda_{t}$ at a prespecified value, which lets us compute the values of the two regressors (factor loadings) and use ordinary least squares to estimate the betas (factors), for each month t.
+Consequently this enhaces not only simplicity and convenience, but also numerical trustworthiness, by enabling us to replace hundreds of potentially challenging numerical optimizations with trivial least-squares regressions. Hencethe question arises, of course, as to an appropriate value for $\lambda_{t}$.
+
+Let's recall for instance that $\lambda_{t}$ determines the maturity at which the loading on the medium-term, or curvature, factor achieves it maximum.Two- or three-year maturities are commonly used in that regard, so we simply picked the average, 30 months. The $\lambda_{t}$ value that maximizes the loading on the medium-term factor at exactly 30 months is as previously mentionned (under figure 1), $\lambda_{t} = 0.0609$.
+
+```{r Forcasting creation, echo = TRUE}
+maturities <- c(
+  3, 6, 9, 12, 15, 18, 21, 24, 30, 36, 48, 60, 72, 84, 96, 108, 120
+)
+yields_df <- data.frame(mydataframe)
+lambda<-0.0609
+regression_function <- function(yields, maturities, lambda) {
+  X <- matrix(1, nrow = length(maturities), ncol = 3)
+  X[, 2] <- (1 - exp(-lambda * maturities)) / (lambda * maturities)
+  X[, 3] <- (((1 - exp(-lambda * maturities)) / (lambda * maturities)) 
+             - exp(-lambda * maturities))
+  
+  ols_parameters <- solve(t(X) %*% X) %*% t(X) %*% yields
+  return(ols_parameters)
+}
+results1 <- apply(yields_df, 1, function(row) {
+  regression_function(row, maturities, lambda)
+})
+beta1 <- results1[1, ]
+beta2 <- results1[2, ]
+beta3 <- results1[3, ]
+betaforcasting<-cbind(beta1,beta2,beta3)
+forcasting <- function(maturities, beta1, beta2, beta3) {
+  beta1 + beta2 * (1 - exp(-lambda * maturities)) / (lambda * maturities) +
+    beta3 * ((1 - exp(-lambda * maturities)) / (lambda * maturities)
+             - exp(-lambda * maturities))
+}
+results <- apply(betaforcasting, 1, function(row) {
+  forcasting(maturities, row["beta1"], row["beta2"], row["beta3"])
+})
+fittedresult<-t(results)
+fittedresults<-as.data.frame(fittedresult)
+colnames(fittedresults)<-maturities
+```
+
+```{r Figure 4, echo = FALSE}
+maturities <- c(
+  "3",
+  "6",
+  "9",
+  "12",
+  "15",
+  "18",
+  "21",
+  "24",
+  "30",
+  "36",
+  "48",
+  "60",
+  "72",
+  "84",
+  "96",
+  "108",
+  "120"
+)
+maturities<-as.numeric(maturities)
+actual_means<- c(
+  mean(mydataframe$"3"),
+  mean(mydataframe$"6"),
+  mean(mydataframe$"9"),
+  mean(mydataframe$"12"),
+  mean(mydataframe$"15"),
+  mean(mydataframe$"18"),
+  mean(mydataframe$"21"),
+  mean(mydataframe$"24"),
+  mean(mydataframe$"30"),
+  mean(mydataframe$"36"),
+  mean(mydataframe$"48"),
+  mean(mydataframe$"60"),
+  mean(mydataframe$"72"),
+  mean(mydataframe$"84"),
+  mean(mydataframe$"96"),
+  mean(mydataframe$"108"),
+  mean(mydataframe$"120")
+)
+fitted_means<- c(
+  mean(fittedresults$"3"),
+  mean(fittedresults$"6"),
+  mean(fittedresults$"9"),
+  mean(fittedresults$"12"),
+  mean(fittedresults$"15"),
+  mean(fittedresults$"18"),
+  mean(fittedresults$"21"),
+  mean(fittedresults$"24"),
+  mean(fittedresults$"30"),
+  mean(fittedresults$"36"),
+  mean(fittedresults$"48"),
+  mean(fittedresults$"60"),
+  mean(fittedresults$"72"),
+  mean(fittedresults$"84"),
+  mean(fittedresults$"96"),
+  mean(fittedresults$"108"),
+  mean(fittedresults$"120")
+)
+```
+
+```{r plot figure 4, echo= TRUE}
+create_yield_plot <- function(maturities, actual_means, fitted_means) {
+  plot(maturities, actual_means, pch = 8, ylim = c(5.6, 7.4), xlim = c(0, 120),
+  xlab = "Maturity (Months)", ylab = "Yield (Percent)")
+  lines(maturities, fitted_means, type = "l")
+  legend("bottomright", legend = c("Actual", "Fitted Nelson-Siegel"),
+  pch = c(8, NA), lty = c(NA, 1))
+  axis(1, at = seq(0, 120, 20))
+  axis(2, at = seq(5.5, 8, 0.5))
+}
+create_yield_plot(maturities, actual_means, fitted_means)
+```
+
+*Actual (data-based) and fitted (model-based) average yield curve. We show the actual average yield curve and the fitted average yield curve obtained by evaluating the Nelson–Siegel function at the mean values of {$\hat\beta_{1t}$,$\hat\beta_{2t}$ and $\hat\beta_{3t}$ from Table 3.*
+
+
+Applying ordinary least squares to the yield data for each month gives us a time series of estimates of {{$\hat\beta_{1t}$,$\hat\beta_{2t}$,$\hat\beta_{3t}$} and a corresponding panel of residuals, or pricing errors. Note that, because the maturities are not equally spaced, we implicitly weight the most ‘‘active’’ region of the yield curve most heavily when fitting the model.
+
+There are many aspects to a full assessment of the ‘‘fit’’ of our model. In Fig. 4 we plot the implied average fitted yield curve against the average actual yield curve. The two agree quite closely. In Fig. 5 we dig deeper by plotting the raw yield curve and the three-factor fitted yield curve for some selected dates. Clearly the three- factor model is capable of replicating a variety of yield curve shapes: upward sloping, downward sloping, humped, and inverted humped. It does, however, have difficulties at some dates, especially when yields are dispersed, with multi- ple interior minima and maxima. 
+
+Overall, however, the residual plot in Fig. 6 indicates indeed a good fit. In Table 2 we present statistics that describe the in-sample fit. The residual sample autocorrelations indicate that pricing errors are persistent. As noted, in *Bliss (1997b)*, regardless of the term structure estimation method used, there is a persistent discrepancy between actual bond prices and prices estimated from term structure models. Presumably, these discrepancies arise for instance from persistent tax and/or liquidity effects.
+However, due to persistance, they should vanish from fitted yield changes.
+
+```{r Figure 5, echo = TRUE, fig.height= 7}
+par(mfrow=c(2,2))
+plot(as.numeric(unlist(mydataframe[51,])),
+     pch= "*",
+     ylim = c(8.9, 9.8),
+     xaxt ="n",
+     ylab = "Yield (Percent)",
+     xlab = "Maturity (Months)",
+     main = "Yield Curve on 3/31/1989")
+lines(as.numeric(unlist(fittedresults[51,])))
+axis(1,at= seq(1,17,1) ,labels = maturities)
+axis(2, at= seq(9,9.8,0.2))
+
+plot(as.numeric(unlist(mydataframe[55,])),
+     pch= "*",
+     ylim = c(7.3, 8),
+     xaxt = "n",
+     ylab = "Yield (Percent)",
+     xlab = "Maturity (Months)",
+     main = "Yield Curve on 7/31/1989")
+lines(as.numeric(unlist(fittedresult[55,])))
+axis(1,at= seq(1,17,1) ,labels = maturities)
+axis(2, at= seq(7.3,8,0.1))
+
+plot(as.numeric(unlist(mydataframe[149,])),
+     pch= "*",
+     ylim = c(5,6.8),
+     xaxt = "n",
+     ylab = "Yield (Percent)",
+     xlab = "Maturity (Months)",
+     main = "Yield Curve on 5/30/1997")
+lines(as.numeric(unlist(fittedresult[149,])))
+axis(1,at= seq(1,17,1) ,labels = maturities)
+
+plot(as.numeric(unlist(mydataframe[164,])),
+     pch= "*",
+     ylim = c(4.8,5.05),
+     xaxt = "n",
+     ylab = "Yield (Percent)",
+     xlab = "Maturity (Months)",
+     main = "Yield Curve on 8/31/1998")
+lines(as.numeric(unlist(fittedresults[164,])))
+axis(1,at= seq(1,17,1) ,labels = maturities)
+axis(2, at= seq(4.8,5.05,0.05))
+```
+*Selected fitted (model-based) yield curves. We plot fitted yield curves for selected dates, together with actual yields (asterisk).*
+
+```{r Creation of residuals, echo = TRUE}
+residuals<-mydataframe-fittedresults
+zz<-as.matrix(residuals)
+```
+
+```{r Figure 6, echo = TRUE}
+persp(x,maturities,zz,shade=0.50,expand= 0.6,theta=315,phi=15,
+      xlab = "time",ylab="maturity",zlab="residuals",r=8,axes=TRUE,
+      ticktype="detailed")
+```
+*Yield curve residuals, from 1985.01 to 2000.12. We plot residuals from Nelson–Siegel yield curves fitted month-by-month.*
+
+```{r Table 2, echo = FALSE}
+meanres <- c(
+  mean(residuals$"3"),
+  mean(residuals$"6"),
+  mean(residuals$"9"),
+  mean(residuals$"12"),
+  mean(residuals$"15"),
+  mean(residuals$"18"),
+  mean(residuals$"21"),
+  mean(residuals$"24"),
+  mean(residuals$"30"),
+  mean(residuals$"36"),
+  mean(residuals$"48"),
+  mean(residuals$"60"),
+  mean(residuals$"72"),
+  mean(residuals$"84"),
+  mean(residuals$"96"),
+  mean(residuals$"108"),
+  mean(residuals$"120")
+)
+
+sdres <- c(
+  sd(residuals$"3"),
+  sd(residuals$"6"),
+  sd(residuals$"9"),
+  sd(residuals$"12"),
+  sd(residuals$"15"),
+  sd(residuals$"18"),
+  sd(residuals$"21"),
+  sd(residuals$"24"),
+  sd(residuals$"30"),
+  sd(residuals$"36"),
+  sd(residuals$"48"),
+  sd(residuals$"60"),
+  sd(residuals$"72"),
+  sd(residuals$"84"),
+  sd(residuals$"96"),
+  sd(residuals$"108"),
+  sd(residuals$"120")
+)
+
+minres <- c(
+  min(residuals$"3"),
+  min(residuals$"6"),
+  min(residuals$"9"),
+  min(residuals$"12"),
+  min(residuals$"15"),
+  min(residuals$"18"),
+  min(residuals$"21"),
+  min(residuals$"24"),
+  min(residuals$"30"),
+  min(residuals$"36"),
+  min(residuals$"48"),
+  min(residuals$"60"),
+  min(residuals$"72"),
+  min(residuals$"84"),
+  min(residuals$"96"),
+  min(residuals$"108"),
+  min(residuals$"120")
+)
+
+maxres <- c(
+  max(residuals$"3"),
+  max(residuals$"6"),
+  max(residuals$"9"),
+  max(residuals$"12"),
+  max(residuals$"15"),
+  max(residuals$"18"),
+  max(residuals$"21"),
+  max(residuals$"24"),
+  max(residuals$"30"),
+  max(residuals$"36"),
+  max(residuals$"48"),
+  max(residuals$"60"),
+  max(residuals$"72"),
+  max(residuals$"84"),
+  max(residuals$"96"),
+  max(residuals$"108"),
+  max(residuals$"120")
+)
+
+
+maeres<- c(
+  mean(abs(residuals$"3")),
+  mean(abs(residuals$"6")),
+  mean(abs(residuals$"9")),
+  mean(abs(residuals$"12")),
+  mean(abs(residuals$"15")),
+  mean(abs(residuals$"18")),
+  mean(abs(residuals$"21")),
+  mean(abs(residuals$"24")),
+  mean(abs(residuals$"30")),
+  mean(abs(residuals$"36")),
+  mean(abs(residuals$"48")),
+  mean(abs(residuals$"60")),
+  mean(abs(residuals$"72")),
+  mean(abs(residuals$"84")),
+  mean(abs(residuals$"96")),
+  mean(abs(residuals$"108")),
+  mean(abs(residuals$"120"))
+)
+
+rmseres <- c(
+  sqrt(mean((residuals$"3")^2)),
+  sqrt(mean((residuals$"6")^2)),
+  sqrt(mean((residuals$"9")^2)),
+  sqrt(mean((residuals$"12")^2)),
+  sqrt(mean((residuals$"15")^2)),
+  sqrt(mean((residuals$"18")^2)),
+  sqrt(mean((residuals$"21")^2)),
+  sqrt(mean((residuals$"24")^2)),
+  sqrt(mean((residuals$"30")^2)),
+  sqrt(mean((residuals$"36")^2)),
+  sqrt(mean((residuals$"48")^2)),
+  sqrt(mean((residuals$"60")^2)),
+  sqrt(mean((residuals$"72")^2)),
+  sqrt(mean((residuals$"84")^2)),
+  sqrt(mean((residuals$"96")^2)),
+  sqrt(mean((residuals$"108")^2)),
+  sqrt(mean((residuals$"120")^2))
+)
+
+
+p1res <- c(
+  acf(residuals$"3", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"6", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"9", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"12", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"15", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"18", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"21", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"24", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"30", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"36", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"48", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"60", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"72", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"84", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"96", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"108", lag.max = 30, plot = FALSE)$acf[2],
+  acf(residuals$"120", lag.max = 30, plot = FALSE)$acf[2]
+)
+
+p12res <- c(
+  acf(residuals$"3", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"6", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"9", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"12", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"15", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"18", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"21", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"24", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"30", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"36", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"48", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"60", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"72", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"84", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"96", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"108", lag.max = 30, plot = FALSE)$acf[13],
+  acf(residuals$"120", lag.max = 30, plot = FALSE)$acf[13]
+)
+
+p30res <- c(
+  acf(residuals$"3", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"6", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"9", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"12", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"15", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"18", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"21", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"24", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"30", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"36", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"48", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"60", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"72", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"84", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"96", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"108", lag.max = 30, plot = FALSE)$acf[31],
+  acf(residuals$"120", lag.max = 30, plot = FALSE)$acf[31]
+)
+
+table2<- cbind(meanres,sdres,minres,maxres,maeres,rmseres,p1res,p12res,p30res)
+rownames(table2)<-c("3","6","9","12","15","18","21","24","30","36","48","60","72","84","96","108","120")
+colnames(table2)<-c("Mean","Std.dev.","Minimum","Maximum","MAE","RMSE","$\\hat{p}(1)$","$\\hat{p}(12)$", "$\\hat{p}(30)$")
+table2r<- round(table2, digits = 3)
+kable(table2r)
+```
+*Note: We fit the three-factor model, ${y_t(\tau)}=\beta_{1t}+\beta_{2t}\big(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\big)+\beta_{3t} \big(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}-e^{-\lambda_t\tau}\big)$ using monthly yield data from 1985:01 to 2000:12, with $\lambda_t$ fixed at 0.0609, and we present descriptive statistics for the corresponding residuals at various maturities. The last three columns contain residual sample autocorrelations at displacements of 1, 12, and 30 months.*
+
+
+In Fig. 7 we plot {{$\hat\beta_{1t}$,$\hat\beta_{2t}$,$\hat\beta_{3t}$} along with the empirical level, slope and curvature defined earlier. The figure confirms our assertion that the three factors in our model correspond to level, slope and curvature. The correlations between the estimated factors and the empirical level, slope, and curvature are $\rho(\hat\beta_{1t},I_t)= 0.97$, $\rho(\hat\beta_{2t},s_t)= -0.99$ and $\rho(\hat\beta_{3t},c_t)= 0.99$, where $(I_t,s_t,c_t)$ are the empirical level, slope and curvature of the yield curve. 
+
+```{r level, curvature, slope, echo = FALSE}
+level<-mydataframe$"120"
+corlevelbeta1<-cor(level,beta1)
+corlevelbeta1<-round(corlevelbeta1,digits=2)
+corslopebeta2<-cor(slope,beta2)
+corslopebeta2<-round(corslopebeta2,digits=2)
+corcurvaturebeta3<-cor(curvature,beta3)
+corcurvaturebeta3<-round(corcurvaturebeta3,digits=2)
+```
+
+```{r Figure 7, echo = TRUE}
+issue.time1<-substr(as.numeric(row.names(mydataframe)), start = 3, stop = 4 )
+issue.time<-unique(issue.time1)
+plot.ts(beta1,
+        ylim = c(4,12),
+        xaxt = "n",
+        ylab = "Yield (Percent)",
+        main = "Solid Line:beta1t  Dotted Line:Level")
+lines(level,lty= "dotted")
+axis(1,at= seq(1,192,12) ,labels = issue.time)
+plot.ts(-beta2,
+        ylim = c(-2,6),
+        xaxt = "n",
+        ylab = "Yield (Percent)",
+        main = "Solid Line:-beta2t  Dotted Line:slope")
+lines(slope,lty= "dotted")
+axis(1,at= seq(1,192,12) ,labels = issue.time)
+plot.ts(0.3*beta3,
+        ylim = c(-2,2),
+        xaxt = "n",
+        ylab = "Yield (Percent)",
+        xlab = "Maturity (Months)",
+        main = "Solid Line: 0.3beta3t  Dotted Line:curvature")
+lines(curvature,lty= "dotted")
+axis(1,at= seq(1,192,12) ,labels = issue.time)
+```
+*Model-based level, slope and curvature (i.e., estimated factors) vs. data-based level, slope and curvature. We define the level as the 10-year yield, the slope as the difference between the 10-year and 3- month yields, and the curvature as the twice the 2-year yield minus the sum of the 3-month and 10-year yields.*
+
+In Table 3 and Fig. 8 we present descriptive statistics for the estimated factors. From the autocorrelations of the three factors, we can see that the first factor is the most persistent, and that the secondfactor is more persistent than the third. Augmented Dickey–Fuller tests suggest that $\hat\beta_{1t}$ and $\hat\beta_{2t}$ may have a unit roots, whereas $\hat\beta_{3t}$ not.Indeed, we obtained as the MacKinnon critical values for rejection of hypothesis of a unit root are -2.58 at the one percent level, -1.95 at the five percent level, and -1.62 at the ten percent level. We used the the ur.df function, using AIC to select the lags. At 1% level of significance, we can say that for $\hat\beta_{1t}$ and $\hat\beta_{2t}$ may have a unit root since the Augmented Dickey-Fuller test statistic are both less negative than the critical value at 1 percent. However,$\hat\beta_{3t}$, since the test statistic is more negative than the critical value,might not have a unit root.Finally, the pairwise correlations between the estimated factors are not large.
+
+```{r Table 3, echo = FALSE}
+library(urca)
+library(knitr)
+
+meansbeta<-c(
+  mean(beta1),
+  mean(beta2),
+  mean(beta3)
+)
+sdbeta<-c(
+  sd(beta1),
+  sd(beta2),
+  sd(beta3)
+)
+minbeta<-c(
+  min(beta1),
+  min(beta2),
+  min(beta3)
+)
+maxbeta<-c(
+  max(beta1),
+  max(beta2),
+  max(beta3)
+)
+
+p1beta<-c(
+  acf(beta1, lag.max = 30, plot = FALSE)$acf[2],
+  acf(beta2, lag.max = 30, plot = FALSE)$acf[2],
+  acf(beta3, lag.max = 30, plot = FALSE)$acf[2]
+  )
+
+p12beta<-c(
+  acf(beta1, lag.max = 30, plot = FALSE)$acf[13],
+  acf(beta2, lag.max = 30, plot = FALSE)$acf[13],
+  acf(beta3, lag.max = 30, plot = FALSE)$acf[13]
+)
+
+p30beta<-c(
+  acf(beta1, lag.max = 30, plot = FALSE)$acf[31],
+  acf(beta2, lag.max = 30, plot = FALSE)$acf[31],
+  acf(beta3, lag.max = 30, plot = FALSE)$acf[31]
+)
+
+adfbeta<-c(
+  ur.df(beta1, selectlags = "AIC")@teststat,
+  ur.df(beta2, selectlags = "AIC")@teststat,
+  ur.df(beta3, selectlags = "AIC")@teststat
+)
+cval1<-ur.df(beta1, selectlags = "AIC")@cval
+cval2<-ur.df(beta2, selectlags = "AIC")@cval
+cval3<-ur.df(beta3, selectlags = "AIC")@cval
+
+
+table3<- cbind(meansbeta,sdbeta,minbeta,maxbeta,p1beta,p12beta,p30beta,adfbeta)
+rownames(table3)<-c("beta1t","beta2t","beta3t")
+colnames(table3)<-c("Mean","Std.dev.","Minimum","Maximum","$\\hat{p}(1)$","$\\hat{p}(12)$", "$\\hat{p}(30)$","ADF")
+table3r<- round(table3, digits = 3)
+kable(table3r)
+```
+*Note: We fit the three-factor Nelson–Siegel model using monthly yield data from 1985:01 to 2000:12, with $\lambda_{t} = 0.0609$ and we present descriptive statistics for the three estimated factors $\hat\beta_{1t}$,$\hat\beta_{2t}$ and $\hat\beta_{3t}$.The last column contains augmented Dickey–Fuller (ADF) unit root test statistics, and the three columns to its left contain sample autocorrelations at displacements of 1, 12, and 30 months.*
+\vspace{1cm}\
+
+
+
+**3.3. Modeling and forecasting yield curve level, slope and curvature**
+
+We model and forecast the Nelson–Siegel factors as univariate AR(1) processes. The AR(1) models can be viewed as natural benchmarks determined a priori: the simplest great workhorse autoregressive models. The yield forecasts based on underlying univariate AR(1) factor specifications are:
+
+$$
+{\hat{y}_{t+h/t}(\tau)}= \hat\beta_{1,t+h/t}+\hat\beta_{2,t+h/t}\bigg(\frac{1-e^{-\lambda\tau}}{\lambda\tau}\bigg)+\hat\beta_{3,t+h/t}\bigg(\frac{1-e^{-\lambda\tau}}{\lambda\tau}-e^{-\lambda\tau}\bigg) 
+$$
+
+where $\qquad$ $\hat\beta_{1,t+h/t}$=$\hat{c}_i +\hat\gamma_i\hat\beta_{it}$, $\qquad$ $i=1,2,3$  
+
+and $\hat{c}_i$ and $\hat\gamma_i$ are obtained  by regressing $\hat\beta_{it}$ on an intercept and $\hat\beta_{i,t-h}$.
+
+For comparison, we also produce yield forecasts based on an underlying
+multivariate VAR(1) specification, as
+
+
+$$
+{\hat{y}_{t+h/t}(\tau)}= \hat\beta_{1,t+h/t}+\hat\beta_{2,t+h/t}\bigg(\frac{1-e^{-\lambda\tau}}{\lambda\tau}\bigg)+\hat\beta_{3,t+h/t}\bigg(\frac{1-e^{-\lambda\tau}}{\lambda\tau}-e^{-\lambda\tau}\bigg) 
+$$
+
+where $\qquad$ $\hat\beta_{t+h/t}$ =$\hat{c}$+ $\hat\Gamma$$\hat\beta_t$.
+
+We include the VAR forecasts for completeness, although one might expect them to be inferior to the AR forecasts for at least two reasons. 
+Firstly, as is well-known from the macroeconomics literature, unrestricted VARs tend to produce poor forecasts of economic variables even when there is important cross-variable interaction, due to the large number of included parameters and the resulting potential for in-sample overfitting.
+Secondly, our factors indeed display little cross-factor interaction and are not highly correlated, so that an appropriate multivariate model is likely close to a stacked set of univariate models.
+
+In Fig. 8 (right column) we provide some evidence on the goodness of fit of the AR(1) models fit to the estimated level, slope and curvature factors, showing residual autocorrelation functions. The autocorrelations are very small, indicating that the models accurately describe the conditional means of level, slope and curvature.
+
+```{r figure 8, echo= TRUE, fig.height=6.8}
+par(mfrow=c (3,2))
+acf (beta1, lag.max = 60, main= "Autocorrelation of beta1",
+     xlab = "Displacement")
+arbeta1<- ar(beta1, order.max = 1) 
+phi=arbeta1$ar
+startvalue<-beta1[1]
+forcast_horizon<- length(beta1)
+predictions<-numeric(forcast_horizon)
+for(i in 1:forcast_horizon){
+  predictions[i]<-phi*startvalue
+  startvalue<-predictions[i]
+}
+residualarbeta1computed<-beta1-predictions
+pacf(residualarbeta1computed, lag.max = 60,ylim = c(-0.15, 0.15), 
+     main= "Autocorrelation of beta1's Residuals")
+abline(h = 0.1, lty = 2, col = "black")
+abline(h = -0.1, lty = 2, col = "black")
+acf(beta2, lag.max = 60, main= "Autocorrelation of beta2", 
+    xlab = "Displacement")
+arbeta2 <- ar(beta2, order.max = 1)
+residualarbeta2given <- arbeta2$resid
+pacf(residualarbeta2given <- arbeta2$resid[-1], lag.max = 60,
+     main= "Autocorrelation of beta2's Residuals")
+abline(h = 0.1, lty = 2, col = "black")
+abline(h = -0.1, lty = 2, col = "black")
+acf (beta3, lag.max=60, main= "Autocorrelation of beta3", 
+     xlab = "Displacement")
+arbeta3 <- ar(beta3, order.max = 1)
+residualarbeta3given <- arbeta3$resid
+pacf(residualarbeta3given <- arbeta3$resid[-1], lag.max = 60, 
+     main= "Autocorrelation of beta3's Residuals")
+abline(h = 0.1, lty = 2, col = "black")
+abline(h = -0.1, lty = 2, col = "black")
+```
+
+*Autocorrelations and residual autocorrelations of level, slope and curvature factors. We plot the sample autocorrelations of the three estimated factors,$\hat\beta_{1t}$,$\hat\beta_{2t}$ and $\hat\beta_{3t}$ as well as the sample autocorrelations of AR(1) models fit to the three estimated factors, along with Barlett’s approximate 95% confidence bands.*
+
+
+
+## Appendix
+
+Recalling what is stated in section 3.2:
+we fit the yield curve using the three-factor model,
+$$
+{y_t(\tau)}= b_{1t} +b_{2t}\bigg(\frac{1-e^{-\lambda_t\tau}}{\lambda_t\tau}\bigg)-b_{3t}e^{-\lambda_t\tau}
+$$
+Authors mention that we could estimate the parameters $\theta_t$= {$\beta_{1t}$,$\beta_{2t}$,$\beta_{3t}$,$\lambda_{t}$}by nonlinear least squares. To provide a comprehensive analysis we have appended a section to the text where we aimed to conduct a thorough investigation by estimating the parameters using non linear least squares as well. By incorporating this, we aimed to achieve a more comprehensive understanding of the underlying dynamics and potentially uncover additional insights. The appendix serves to elaborate on our methodology, presenting the steps taken to estimate the parameters using the non-linear least squares and comparing it with what obtained above.This allows readers to gain a holistic view of different methods to assess the parameters. Even if the parameters obtained in the two procedures are completely different, we manage to fit properly the Nelson-Siegel model.
+
+```{r appendix, echo=TRUE, warning=FALSE}
+library(minpack.lm)
+library(knitr)
+maturities.appendix <- c(3, 6, 9, 12, 15, 18,
+                         21, 24, 30, 36, 48, 60, 72, 84, 96, 108, 120)
+nelson_siegel_model.appendix <- function(maturities,
+                                         beta0, beta1, beta2, lambda)
+  {
+  beta0 + beta1 * (1 - exp(-lambda * maturities)) / (lambda * maturities) +
+    beta2 * ((1 - exp(-lambda * maturities)) / (lambda * maturities) 
+             - exp(-lambda * maturities))
+  }
+results.appendix <- data.frame(matrix(NA, nrow = nrow(mydataframe), ncol = 4))
+colnames(results.appendix) <- c("beta0.ap", "beta1.ap", "beta2.ap", "lambda.ap")
+for (i in 1:nrow(mydataframe)) {
+  yields <- as.numeric(unlist(mydataframe[i,]))
+data <- data.frame(maturities = maturities.appendix, yields = yields)
+ start_params <- list(beta0 = 0, beta1 = 0, beta2 = 0.0, lambda = 0.1)
+ fit_nelson_siegel.appendix <- try(nlsLM(yields ~ nelson_siegel_model.appendix
+                                    (maturities, beta0, beta1, beta2, lambda),
+                                 data = data, start = start_params))
+  if (!inherits(fit_nelson_siegel.appendix, "try-error")) {
+    results.appendix[i, ] <- coef(fit_nelson_siegel.appendix)
+  } else {
+    results.appendix[i, ] <- NA
+  }
+ }
+beta.appendix<-results.appendix
+resultsdata.appendix <- apply(beta.appendix, 1, function(row) {
+  nelson_siegel_model.appendix(maturities.appendix, row["beta0.ap"], 
+                               row["beta1.ap"], row["beta2.ap"],
+                               row["lambda.ap"])
+})
+resultsdata.appendix<-t(resultsdata.appendix)
+plot(as.numeric(unlist(mydataframe[51,])),
+     pch = "*",
+     ylim = c(8.9, 9.8),
+     xaxt ="n",
+     ylab = "Yield (Percent)",
+     xlab = "Maturity (Months)",
+     main = "Yield Curve on 3/31/1989")
+lines(resultsdata.appendix[51,])
+axis(1,at= seq(1,17,1) ,labels = maturities)
+axis(2, at= seq(9,9.8,0.2))
+```
+
